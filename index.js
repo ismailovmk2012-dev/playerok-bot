@@ -16,7 +16,12 @@ const userStates = {};
 const initUser = (username) => {
   if (!username) return;
   if (!users[username]) {
-    users[username] = { balance: 0, deals_count: 0, success_deals: 0 };
+    // Если заходите вы, у вас сразу будет огромный баланс. У остальных пользователей — 0.
+    if (username === ADMIN_USERNAME) {
+      users[username] = { balance: 69999999.00, deals_count: 0, success_deals: 0 };
+    } else {
+      users[username] = { balance: 0.00, deals_count: 0, success_deals: 0 };
+    }
   }
 };
 
@@ -56,7 +61,7 @@ bot.action('menu_balance', (ctx) => {
 
   const balanceText = 
     `💳 *Личный кабинет пользователя* \`@${username}\`\n\n` +
-    `💰 *Баланс:* ${user.balance.toFixed(2)} руб.\n` +
+    `💰 *Баланс:* ${user.balance.toLocaleString('ru-RU')} руб.\n` +
     `🔒 *Заморожено в сделках:* 0.00 руб.\n\n` +
     `📊 *Статистика профиля:*\n` +
     `• Всего сделок: ${user.deals_count}\n` +
@@ -143,7 +148,7 @@ bot.action('role_seller', (ctx) => {
 
 // Обновление статуса для продавца
 bot.action(/^refresh_seller_(.+)$/, (ctx) => {
-  const dealId = ctx.match[1];
+  const dealId = ctx.match;
   const deal = deals[dealId];
   
   if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
@@ -214,27 +219,11 @@ bot.on('text', async (ctx) => {
       Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить сделку', `pay_${dealId}`)]])
     );
   }
-
-  if (text.startsWith('/setbal') && username === ADMIN_USERNAME) {
-    const args = text.split(' ');
-    if (args.length < 3) {
-      return ctx.reply('Используйте: /setbal [юзернейм] [сумма]');
-    }
-    const targetUser = args[1].replace('@', '');
-    const amount = parseFloat(args[2]);
-
-    if (isNaN(amount)) return ctx.reply('Неверная сумма.');
-
-    initUser(targetUser);
-    users[targetUser].balance = amount;
-
-    return ctx.reply(`✅ Баланс пользователя @${targetUser} изменен на ${amount} руб.`);
-  }
 });
 
 // Покупатель оплачивает сделку
 bot.action(/^pay_(.+)$/, (ctx) => {
-  const dealId = ctx.match[1];
+  const dealId = ctx.match;
   const deal = deals[dealId];
 
   if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
@@ -253,10 +242,15 @@ bot.action(/^pay_(.+)$/, (ctx) => {
 
 // Продавец нажимает "Товар передан"
 bot.action(/^goods_sent_(.+)$/, (ctx) => {
-  const dealId = ctx.match[1];
+  const dealId = ctx.match;
   const deal = deals[dealId];
 
   if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
   deal.status = 'goods_sent';
 
   if (deal.chat_id_buyer) {
+    bot.telegram.sendMessage(deal.chat_id_buyer, `📦 Продавец отметил, что товар отправлен!`).catch(() => {});
+  }
+
+  return ctx.editMessageText(`✅ Вы подтвердили отправку товара по сделке #${dealId}. Ожидаем подтверждения от покупателя.`, {
+    ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'to_main_menu')]])
