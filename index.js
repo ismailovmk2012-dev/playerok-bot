@@ -10,14 +10,12 @@ let users = {};
 let deals = {};
 let states = {};
 
-// Создаем веб-сервер, чтобы Render мгновенно пропускал проверку портов
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('Bot is running\n');
 }).listen(PORT, '0.0.0.0');
 
-// Загрузка базы данных участников из файла
 if (fs.existsSync('database.json')) {
     try { 
         users = JSON.parse(fs.readFileSync('database.json', 'utf8')); 
@@ -235,3 +233,6 @@ bot.action(/^pay_(\d+)$/, async (ctx) => {
     });
 });
 
+bot.action(/^sent_(\d+)$/, async (ctx) => {
+    const dId = parseInt(ctx.match[1]);
+    const d = deals[dId];
