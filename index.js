@@ -1,12 +1,21 @@
 import { Telegraf, Markup } from 'telegraf';
 import fs from 'fs';
+import http from 'http';
 
 const bot = new Telegraf('8849870102:AAGiJ0uvDWHKAH3sFYCWQECSgJmNFC0zsnY');
-const ADMIN_ID = 8886821631; // Твой Telegram ID
+const ADMIN_ID = 8886821631; 
 
 let users = {}, deals = {}, states = {};
 
-// Железная загрузка базы данных из файла
+// Авто-заглушка для прохождения проверки портов Render
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is running\n');
+}).listen(PORT, '0.0.0.0', () => {
+    console.log(`🌐 Внутренний порт веб-сервиса запущен на порту ${PORT}`);
+});
+
 if (fs.existsSync('database.json')) {
     try { users = JSON.parse(fs.readFileSync('database.json', 'utf8')); } catch(e) { users = {}; }
 }
@@ -68,7 +77,7 @@ bot.on('text', async (ctx, next) => {
     const st = states[uid];
     if (!st || st.step !== 'info') return next();
 
-    delete states[uid]; // Сразу сбрасываем режим ожидания, чтобы бот не молчал при повторном клике
+    delete states[uid]; 
 
     const text = ctx.message.text.trim();
     const match = text.match(/^(\d+)\s+(.+?)\s+(\d+)$/);
@@ -126,7 +135,7 @@ bot.action(/^pay_(\d+)$/, async (ctx) => {
 bot.action(/^sent_(\d+)$/, async (ctx) => {
     const dId = parseInt(ctx.match), d = deals[dId];
     if (!d || ctx.from.id !== d.sid || d.status !== 'send') return ctx.answerCbQuery('❌ Ошибка.');
-    d.status = 'check'; await ctx.answerCbQuery('✅ Отправлено!'); await ctx.editMessageText(`👌 Вы отметили передачу товара по сделке №${dId}. Ожидайте подтверждения.`);
+    d.status = 'check'; await ctx.answerCbQuery('✅ Статус обновлен!'); await ctx.editMessageText(`👌 Вы отметили передачу товара по сделке №${dId}. Ожидайте подтверждения.`);
     bot.telegram.sendMessage(d.bid, `🔔 Продавец передал товар по сделке №${dId}!\n\nПроверьте данные и подтвердите покупку:`, {
         ...Markup.inlineKeyboard([[Markup.button.callback('✅ Подтвердить покупку', `done_${dId}`)]])
     });
