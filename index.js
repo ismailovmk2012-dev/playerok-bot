@@ -17,14 +17,18 @@ const mainKb = Markup.inlineKeyboard([
 ]);
 
 bot.start((ctx) => {
-  if (ctx.from.username) users[ctx.from.username.toLowerCase()] = ctx.chat.id;
+  if (ctx.from.username) {
+    // Сохраняем юзернейм строго маленькими буквами для точного поиска
+    users[ctx.from.username.toLowerCase()] = ctx.chat.id;
+  }
   if (ctx.session) ctx.session = {};
   return ctx.replyWithMarkdown(welcomeText, mainKb).catch((e) => console.log(e));
 });
 
 bot.action('bal', (ctx) => {
-  const isId = (ctx.from.username || '').toLowerCase() === ADMIN.toLowerCase();
-  const text = `💳 *Личный кабинет пользователя* \`@${ctx.from.username}\`\n━━━━━━━ СИСТЕМА ГАРАНТА ━━━━━━━\n💰 *Доступный баланс:* ${isId ? '69 999 999' : '0'}.00 руб.\n🔒 *Заморожено в сделках:* 0.00 руб.\n\n📊 *Статистика на PlayerOk:*\n• Всего операций: *0*\n• Успешных обменов: *0*\n• Открытых споров/арбитражей: *0*\n\n✅ Ваш аккаунт полностью верифицирован.`;
+  const username = ctx.from.username || 'user';
+  const isId = username.toLowerCase() === ADMIN.toLowerCase();
+  const text = `💳 *Личный кабинет пользователя* \`@${username}\`\n━━━━━━━ СИСТЕМА ГАРАНТА ━━━━━━━\n💰 *Доступный баланс:* ${isId ? '69 999 999' : '0'}.00 руб.\n🔒 *Заморожено в сделках:* 0.00 руб.\n\n📊 *Статистика на PlayerOk:*\n• Всего операций: *0*\n• Успешных обменов: *0*\n• Открытых споров/арбитражей: *0*\n\n✅ Ваш аккаунт полностью верифицирован.`;
   return ctx.editMessageText(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад в меню', 'menu')]]) }).catch((e) => console.log(e));
 });
 
@@ -55,19 +59,20 @@ bot.on('text', async (ctx) => {
 
     ctx.replyWithMarkdown(`✨ *Бланк сделки #${dealId} сформирован!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛒 *Роль:* ПОКУПАТЕЛЬ\n📦 *Товар:* ${deals[dealId].title}\n💰 *Сумма:* ${price.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🚀 Предложение автоматически отправлено продавцу @${deals[dealId].seller}...`);
 
-    const tChat = users[deals[dealId].seller];
+    // Ищем продавца строго в нижнем регистре
+    const tChat = users[deals[dealId].seller.toLowerCase()];
     if (tChat) {
       deals[dealId].s_chat = tChat;
       const propText = `🔔 *Вам поступило предложение о продаже!* (#${dealId})\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Товар:* ${deals[dealId].title}\n💰 *Вы получите:* ${price.toLocaleString('ru-RU')} руб.\n🛒 *Покупатель:* @${ADMIN}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ *ПРОТОКОЛ БЕЗОПАСНОСТИ:*\n• Вы обязаны фиксировать на видео момент передачи товара.\n• Запрещено уводить покупателя в сторонние чаты.\n• Попытка обмана приведет к блокировке средств.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВы согласны открыть сделку под защитой Гаранта PlayerOk?`;
       bot.telegram.sendMessage(tChat, propText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🤝 Принять условия', `ok_${dealId}`)]]) }).catch((e) => console.log(e));
     } else {
-      ctx.replyWithMarkdown(`⚠️ Продавец @${deals[dealId].seller} еще не запускал бота. Перешлите ему ссылку на бота, чтобы он нажал /start.`);
+      ctx.replyWithMarkdown(`⚠️ Продавец @${deals[dealId].seller} еще не зарегистрирован в текущей сессии бота. \n\n*Что делать?*\n1. Пусть @${deals[dealId].seller} прямо сейчас отправит вашему боту команду \`/start\`\n2. После этого создайте сделку заново.`);
     }
   }
 });
 
 bot.action(/^ok_(.+)$/, (ctx) => {
-  const d = deals[ctx.match[1]];
+  const d = deals[ctx.match];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
   d.status = 'accepted';
 
@@ -79,7 +84,7 @@ bot.action(/^ok_(.+)$/, (ctx) => {
 });
 
 bot.action(/^pay_(.+)$/, (ctx) => {
-  const d = deals[ctx.match[1]];
+  const d = deals[ctx.match];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
   d.status = 'paid';
 
@@ -91,7 +96,7 @@ bot.action(/^pay_(.+)$/, (ctx) => {
 });
 
 bot.action(/^sent_(.+)$/, (ctx) => {
-  const d = deals[ctx.match[1]];
+  const d = deals[ctx.match];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
   d.status = 'goods_sent';
 
@@ -103,7 +108,7 @@ bot.action(/^sent_(.+)$/, (ctx) => {
 });
 
 bot.action(/^end_(.+)$/, (ctx) => {
-  const d = deals[ctx.match[1]];
+  const d = deals[ctx.match];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
   d.status = 'completed';
 
