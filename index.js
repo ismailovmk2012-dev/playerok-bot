@@ -160,7 +160,6 @@ bot.on('text', async (ctx, next) => {
 
     const dId = Math.floor(100000 + Math.random() * 900000);
     
-    // Определяем роли
     const buyerId = (type === 'buy') ? uid : targetId;
     const sellerId = (type === 'buy') ? targetId : uid;
     const buyerName = (type === 'buy') ? (ctx.from.username || 'Покупатель') : targetUsername.replace('@','');
