@@ -98,7 +98,7 @@ bot.action('role_sell', (ctx) => {
     ctx.replyWithMarkdown(`💰 *ОФОРМЛЕНИЕ ПРОДАЖИ ТОВАРА*\n\n📝 Отправьте данные сделки *одним сообщением* строго по шаблону:\n\`[Сумма] [Название товара] [Юзернейм Покупателя]\`\n\n📋 *Пример:* \`1500 Нож в Standoff 2 @user_name\`\n\n⚠️ _Важно: Покупатель должен запустить бота (нажать /start) хотя бы один раз до начала сделки!_`);
 });
 
-bot.on('text', async (ctx, next) => {
+bot.on('text', (ctx, next) => {
     const uid = ctx.from.id;
     const st = states[uid];
     if (!st || st.step !== 'info') return next();
@@ -147,14 +147,14 @@ bot.on('text', async (ctx, next) => {
     });
 });
 
-bot.action(/^ok_(\d+)$/, async (ctx) => {
+bot.action(/^ok_(\d+)$/, (ctx) => {
     const dId = parseInt(ctx.match[1]);
     const d = deals[dId];
     if (!d || ctx.from.id !== d.sellerId || d.status !== 'wait') return ctx.answerCbQuery('❌ Ошибка: Сделка недоступна.');
     
     d.status = 'pay'; 
-    await ctx.answerCbQuery('✅ Сделка успешно подтверждена!');
-    await ctx.editMessageText(`🤝 Вы приняли сделку №${dId}. Ожидайте, пока покупатель @${d.buyerName} внесёт оплату.`);
+    ctx.answerCbQuery('✅ Сделка успешно подтверждена!');
+    ctx.editMessageText(`🤝 Вы приняли сделку №${dId}. Ожидайте, пока покупатель @${d.buyerName} внесёт оплату.`);
     
     bot.telegram.sendMessage(d.buyerId, `🎉 Продавец принял сделку №${dId}!\n\n📦 Товар: *${d.item}*\n💰 К оплате: *${d.am} руб.*\n\nНажмите кнопку ниже для перевода средств на баланс гаранта:`, {
         parse_mode: 'Markdown',
@@ -162,7 +162,7 @@ bot.action(/^ok_(\d+)$/, async (ctx) => {
     });
 });
 
-bot.action(/^pay_(\d+)$/, async (ctx) => {
+bot.action(/^pay_(\d+)$/, (ctx) => {
     const dId = parseInt(ctx.match[1]);
     const d = deals[dId];
     if (!d || ctx.from.id !== d.buyerId || d.status !== 'pay') return ctx.answerCbQuery('❌ Ошибка.');
@@ -175,28 +175,28 @@ bot.action(/^pay_(\d+)$/, async (ctx) => {
     b.balance -= d.am; 
     d.status = 'send'; 
     
-    await ctx.answerCbQuery('✅ Успешно оплачено!');
-    await ctx.editMessageText(`💰 Сделка №${dId} успешно оплачена! Средства заморожены на счёте Playerok. Ожидайте получения товара от продавца.`);
+    ctx.answerCbQuery('✅ Успешно оплачено!');
+    ctx.editMessageText(`💰 Сделка №${dId} успешно оплачена! Средства заморожены на счёте Playerok. Ожидайте получения товара от продавца.`);
     
     bot.telegram.sendMessage(d.sellerId, `📢 Покупатель @${d.buyerName} оплатил сделку №${dId}! Средства успешно заморожены гарантом.\n\n👉 Теперь вы можете безопасно передать данные от аккаунта/товар покупателю в ЛС. После передачи нажмите кнопку ниже:`, {
         ...Markup.inlineKeyboard([[Markup.button.callback('📦 Товар передан', `sent_${dId}`)]])
     });
 });
 
-bot.action(/^sent_(\d+)$/, async (ctx) => {
+bot.action(/^sent_(\d+)$/, (ctx) => {
     const dId = parseInt(ctx.match[1]);
     const d = deals[dId];
     if (!d || ctx.from.id !== d.sellerId || d.status !== 'send') return ctx.answerCbQuery('❌ Ошибка.');
     
     d.status = 'check'; 
-    await ctx.answerCbQuery('✅ Статус обновлен!');
-    await ctx.editMessageText(`👌 Вы зафиксировали передачу товара по сделке №${dId}. Ожидайте проверки и подтверждения от покупателя.`);
+    ctx.answerCbQuery('✅ Статус обновлен!');
+    ctx.editMessageText(`👌 Вы зафиксировали передачу товара по сделке №${dId}. Ожидайте проверки и подтверждения от покупателя.`);
     
     bot.telegram.sendMessage(d.buyerId, `🔔 Продавец отметил, что передал товар по сделке №${dId}!\n\nПроверьте полученные данные. Если всё верно, подтвердите покупку, чтобы продавец получил деньги:`, {
         ...Markup.inlineKeyboard([[Markup.button.callback('✅ Подтвердить покупку', `done_${dId}`)]])
     });
 });
 
-bot.action(/^done_(\d+)$/, async (ctx) => {
+bot.action(/^done_(\d+)$/, (ctx) => {
     const dId = parseInt(ctx.match[1]);
     const d = deals[dId];
