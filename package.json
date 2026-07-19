@@ -1,7 +1,6 @@
 {
   "name": "playerok-bot",
   "version": "2.0.0",
-  "type": "module",
   "dependencies": {
     "telegraf": "^4.16.3"
   },
