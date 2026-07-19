@@ -1,6 +1,6 @@
-import { Telegraf, Markup } from 'telegraf';
-import fs from 'fs';
-import http from 'http';
+const { Telegraf, Markup } = require('telegraf');
+const fs = require('fs');
+const http = require('http');
 
 const bot = new Telegraf('8849870102:AAGiJ0uvDWHKAH3sFYCWQECSgJmNFC0zsnY');
 const ADMIN_USERNAME = 'k13_way'; 
@@ -10,12 +10,14 @@ let users = {};
 let deals = {};
 let states = {};
 
+// Сервер для обхода проверки портов Render
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('Bot is running\n');
 }).listen(PORT, '0.0.0.0');
 
+// Безопасное чтение базы данных
 if (fs.existsSync('database.json')) {
     try { 
         users = JSON.parse(fs.readFileSync('database.json', 'utf8')); 
@@ -78,7 +80,7 @@ bot.hears('🛡️ Безопасность', (ctx) => {
 });
 
 bot.hears('🆘 Поддержка', (ctx) => {
-    ctx.reply('🆘 Поддержка Playerok Гарант ПРЯМО в Telegram!\n\n⚖️ В случае спорных моментов в сделках, обращайтесь к нашему официальному модератору @sw1zyy01. Прикрепите медийные доказательства (скриншоты/видео) проблемы в сделке.\n\nС любовью — Playerok Гарант. ❤️');
+    ctx.reply('🆘 Поддержка Playerok Гарант ПРЯМО in Telegram!\n\n⚖️ В случае спорных моментов в сделках, обращайтесь к нашему официальному модератору @sw1zyy01. Прикрепите медийные доказательства (скриншоты/видео) проблемы в сделке.\n\nС любовью — Playerok Гарант. ❤️');
 });
 
 bot.hears('💳 Баланс', (ctx) => {
@@ -234,5 +236,3 @@ bot.action(/^pay_(\d+)$/, async (ctx) => {
 });
 
 bot.action(/^sent_(\d+)$/, async (ctx) => {
-    const dId = parseInt(ctx.match[1]);
-    const d = deals[dId];
