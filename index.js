@@ -39,8 +39,8 @@ bot.command('give', (ctx) => {
 bot.hears('🤝 Создать сделку', (ctx) => {
     ctx.reply('👉 Выберите вашу роль:', Markup.inlineKeyboard([[Markup.button.callback('🛒 Купить', 'r_buy'), Markup.button.callback('💰 Продать', 'r_sell')]]));
 });
-bot.action('r_buy', (ctx) => { states[ctx.from.id] = { step: 'info', type: 'buy' }; ctx.answerCbQuery(); ctx.replyWithMarkdown('🛒 *ПОКУПКА*\n\nОтправьте сообщение:\n`[Сумма] [Товар] [@юзернейм_продавца]`\n\nПример: `2500 Standoff 2 Account @user_name` '); });
-bot.action('r_sell', (ctx) => { states[ctx.from.id] = { step: 'info', type: 'sell' }; ctx.answerCbQuery(); ctx.replyWithMarkdown('💰 *ПРОДАЖА*\n\nОтправьте сообщение:\n`[Сумма] [Товар] [@юзернейм_покупателя]`\n\nПример: `1500 Нож в Standoff 2 @user_name` '); });
+bot.action('r_buy', (ctx) => { ctx.answerCbQuery().catch(()=>{}); states[ctx.from.id] = { step: 'info', type: 'buy' }; ctx.replyWithMarkdown('🛒 *ПОКУПКА*\n\nОтправьте сообщение:\n`[Сумма] [Товар] [@юзернейм_продавца]`\n\nПример: `2500 Standoff 2 Account @user_name`'); });
+bot.action('r_sell', (ctx) => { ctx.answerCbQuery().catch(()=>{}); states[ctx.from.id] = { step: 'info', type: 'sell' }; ctx.replyWithMarkdown('💰 *ПРОДАЖА*\n\nОтправьте сообщение:\n`[Сумма] [Товар] [@юзернейм_покупателя]`\n\nПример: `1500 Нож в Standoff 2 @user_name`'); });
 
 bot.on('text', (ctx, next) => {
     const uid = ctx.from.id, st = states[uid];
@@ -59,29 +59,33 @@ bot.on('text', (ctx, next) => {
     bot.telegram.sendMessage(tId, `🔔 *Новая сделка №${dId}!*\n\nТовар: ${item}\nСумма: ${am} руб.\n\nВы готовы?`, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🤝 Принять', `ok_${dId}`)]]) }).catch(()=>{ctx.reply('❌ Ошибка отправки.');});
 });
 bot.action(/^ok_(\d+)$/, (ctx) => {
+    ctx.answerCbQuery().catch(()=>{});
     const dId = parseInt(ctx.match[1]), d = deals[dId];
-    if (!d || ctx.from.id !== d.sId || d.status !== 'wait') return ctx.answerCbQuery('❌ Ошибка.');
-    d.status = 'pay'; ctx.answerCbQuery(); ctx.editMessageText(`🤝 Вы приняли сделку №${dId}. Ожидайте оплату.`);
+    if (!d || ctx.from.id !== d.sId || d.status !== 'wait') return ctx.reply('❌ Ошибка.');
+    d.status = 'pay'; ctx.editMessageText(`🤝 Вы приняли сделку №${dId}. Ожидайте оплату.`);
     bot.telegram.sendMessage(d.bId, `🎉 Сделка №${dId} принята!\n\nК оплате: ${d.am} руб.`, Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить', `pay_${dId}`)]]));
 });
 bot.action(/^pay_(\d+)$/, (ctx) => {
+    ctx.answerCbQuery().catch(()=>{});
     const dId = parseInt(ctx.match[1]), d = deals[dId];
-    if (!d || ctx.from.id !== d.bId || d.status !== 'pay') return ctx.answerCbQuery('❌ Ошибка.');
+    if (!d || ctx.from.id !== d.bId || d.status !== 'pay') return ctx.reply('❌ Ошибка.');
     init(d.bId, ctx.from.username); if (users[d.bId].balance < d.am) return ctx.reply('❌ Недостаточно средств.');
-    users[d.bId].balance -= d.am; d.status = 'send'; ctx.answerCbQuery(); ctx.editMessageText(`💰 Сделка №${dId} оплачена! Ожидайте товар.`);
+    users[d.bId].balance -= d.am; d.status = 'send'; ctx.editMessageText(`💰 Сделка №${dId} оплачена! Ожидайте товар.`);
     bot.telegram.sendMessage(d.sId, `📢 Сделка №${dId} оплачена! Передайте товар в ЛС и нажмите кнопку:`, Markup.inlineKeyboard([[Markup.button.callback('📦 Товар передан', `sent_${dId}`)]]));
 });
 bot.action(/^sent_(\d+)$/, (ctx) => {
+    ctx.answerCbQuery().catch(()=>{});
     const dId = parseInt(ctx.match[1]), d = deals[dId];
-    if (!d || ctx.from.id !== d.sId || d.status !== 'send') return ctx.answerCbQuery('❌ Ошибка.');
-    d.status = 'check'; ctx.answerCbQuery(); ctx.editMessageText(`👌 Товар по сделке №${dId} передан.`);
+    if (!d || ctx.from.id !== d.sId || d.status !== 'send') return ctx.reply('❌ Ошибка.');
+    d.status = 'check'; ctx.editMessageText(`👌 Товар по сделке №${dId} передан.`);
     bot.telegram.sendMessage(d.bId, `🔔 Товар №${dId} передан! Проверьте и подтвердите:`, Markup.inlineKeyboard([[Markup.button.callback('✅ Подтвердить', `done_${dId}`)]]));
 });
 bot.action(/^done_(\d+)$/, (ctx) => {
+    ctx.answerCbQuery().catch(()=>{});
     const dId = parseInt(ctx.match[1]), d = deals[dId];
-    if (!d || ctx.from.id !== d.bId || d.status !== 'check') return ctx.answerCbQuery('❌ Ошибка.');
+    if (!d || ctx.from.id !== d.bId || d.status !== 'check') return ctx.reply('❌ Ошибка.');
     d.status = 'end'; init(d.sId, null); users[d.sId].balance += d.am; users[d.bId].count++; users[d.sId].count++;
-    ctx.answerCbQuery(); ctx.editMessageText(`🎉 Сделка №${dId} завершена!`);
+    ctx.editMessageText(`🎉 Сделка №${dId} завершена!`);
     bot.telegram.sendMessage(d.sId, `💰 Сделка №${dId} завершена! +${d.am} руб.`);
 });
 bot.launch().then(() => console.log('🚀 OK'));
