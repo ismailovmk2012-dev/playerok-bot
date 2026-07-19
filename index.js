@@ -133,7 +133,7 @@ bot.on('text', (ctx, next) => {
     const buyerName = (type === 'buy') ? (ctx.from.username || 'Покупатель') : targetUsername.replace('@','');
     const sellerName = (type === 'buy') ? targetUsername.replace('@','') : (ctx.from.username || 'Продавец');
 
-    deals[dId] = { id: dId, buyerId, sellerId, buyerName, sellerName, am, item, status: 'wait' };
+    deals[dId] = { id: dId, buyerId: buyerId, sellerId: sellerId, buyerName: buyerName, sellerName: sellerName, am: am, item: item, status: 'wait' };
 
     ctx.reply(`⏳ Сделка №${dId} успешно оформлена! Ожидаем подтверждения от второй стороны.`);
 
