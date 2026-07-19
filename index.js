@@ -5,10 +5,20 @@ const ADMIN_USERNAME = 'k13_way', ADMIN_ID = 8886821631;
 let users = {}, deals = {}, states = {};
 
 const PORT = process.env.PORT || 10000;
-// Подключаем встроенный вебхук Telegraf к нашему серверу для Render
-http.createServer(async (req, res) => {
-    if (req.url === '/secret-webhook') {
-        bot.handleUpdate(req.body, res);
+
+// Сервер с правильным сбором данных для вебхука Telegraf
+http.createServer((req, res) => {
+    if (req.url === '/secret-webhook' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            try {
+                const update = JSON.parse(body);
+                bot.handleUpdate(update, res);
+            } catch (e) {
+                res.writeHead(400); res.end('Bad Request');
+            }
+        });
     } else {
         res.writeHead(200); res.end('OK');
     }
@@ -70,7 +80,7 @@ bot.action(/^ok_(\d+)$/, async (ctx) => {
 bot.action(/^pay_(\d+)$/, async (ctx) => {
     ctx.answerCbQuery().catch(() => {}); const dId = parseInt(ctx.match[1]), d = deals[dId]; if (!d || ctx.from.id !== d.buyerId || d.status !== 'pay') return ctx.reply('❌ Ошибка.');
     const b = users[d.buyerId]; if (b.balance < d.am) return ctx.reply(`❌ Недостаточно средств. Баланс: ${b.balance} руб.`);
-    b.balance -= d.am; d.status = 'send'; ctx.editMessageText(`💰 Сделка №${dId} оплачена! Средства заморожены.`);
+    b.balance -= d.am; d.status = 'send'; ctx.editMessageText(`💰 Сделка №${dId} успешно оплачена! Средства заморожены.`);
     bot.telegram.sendMessage(d.sellerId, `📢 Покупатель оплатил сделку №${dId}! Передайте товар в ЛС и нажмите кнопку:`, { ...Markup.inlineKeyboard([[Markup.button.callback('📦 Товар передан', `sent_${dId}`)]]) });
 });
 bot.action(/^sent_(\d+)$/, async (ctx) => {
@@ -84,5 +94,4 @@ bot.action(/^done_(\d+)$/, async (ctx) => {
     bot.telegram.sendMessage(d.sellerId, `💰 Сделка №${dId} завершена! +${d.am} руб.`);
 });
 
-// Запуск вебхука на URL твоего сервиса Render
 bot.telegram.setWebhook('https://onrender.com').then(() => console.log('🚀 Webhook Live'));
